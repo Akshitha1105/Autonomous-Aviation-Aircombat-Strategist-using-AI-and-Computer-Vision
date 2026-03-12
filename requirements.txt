@@ -1,7 +1,6 @@
-opencv-python-headless==4.7.0.72
-numpy==1.24.4
-streamlit==1.31.1
-ultralytics==8.0.196
+streamlit
+ultralytics
+numpy
 pandas
 pillow
 gdown
