@@ -1,6 +1,6 @@
 streamlit
 ultralytics
-opencv-python-headless
+opencv-python-headless==4.9.0.80
 numpy
 pandas
 pillow
