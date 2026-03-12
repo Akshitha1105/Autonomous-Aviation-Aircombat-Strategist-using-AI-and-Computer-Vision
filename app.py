@@ -19,7 +19,7 @@ st.set_page_config(page_title="Aviation Combat Strategist", layout="centered")
 MODEL_PATH = "Weights/final_best.pt"
 MODEL_URL = "https://drive.google.com/uc?id=1ILDTIAeLyfQQRDDp2uEXadXG-wBHqJgE"
 
-RANDOM_IMG_DIR = "random_data/images"
+RANDOM_IMG_DIR = "random_data/images/images"
 RANDOM_VID_DIR = "random_data/videos"
 
 MIN_MODEL_SIZE_MB = 100
