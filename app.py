@@ -1,10 +1,7 @@
 import os
-os.environ["OPENCV_VIDEOIO_PRIORITY_MSMF"] = "0"
-
 import streamlit as st
 import tempfile
 import random
-import cv2
 import numpy as np
 from collections import defaultdict
 from ultralytics import YOLO
@@ -125,6 +122,7 @@ user_plane = st.selectbox(
 col1, col2 = st.columns(2)
 
 with col1:
+
     if st.button("Use Random Image"):
 
         images = [
@@ -149,6 +147,7 @@ with col1:
 
 
 with col2:
+
     if st.button("Use Random Video"):
 
         videos = [
@@ -220,11 +219,7 @@ if st.session_state.selected_file:
 def display_strategy(class_name):
 
     if class_name not in aircraft_data:
-
-        st.warning(
-            f"{class_name} not in knowledge base"
-        )
-
+        st.warning(f"{class_name} not in knowledge base")
         return
 
     strategy = generate_strategy(
@@ -235,29 +230,21 @@ def display_strategy(class_name):
 
     st.markdown(f"### Strategy vs {class_name}")
 
-    st.write(
-        f"**Win Probability:** {strategy['win_probability']*100:.1f}%"
-    )
+    st.write(f"**Win Probability:** {strategy['win_probability']*100:.1f}%")
 
     st.write("**Advantages:**")
-
     for adv in strategy["advantages"]:
         st.write(f"- {adv}")
 
     st.write("**Disadvantages:**")
-
     for dis in strategy["disadvantages"]:
         st.write(f"- {dis}")
 
     if strategy["counter_strategy"]:
-        st.write(
-            f"**Counter Strategy:** {strategy['counter_strategy']}"
-        )
+        st.write(f"**Counter Strategy:** {strategy['counter_strategy']}")
 
     if strategy["escape_plan"]:
-        st.write(
-            f"**Escape Plan:** {strategy['escape_plan']}"
-        )
+        st.write(f"**Escape Plan:** {strategy['escape_plan']}")
 
 
 # -----------------------------
@@ -293,135 +280,59 @@ if st.button("Run Detection"):
 
         img = r.plot()
 
-        st.image(
-            img,
-            caption="Detected Aircraft",
-            use_column_width=True
-        )
+        st.image(img, caption="Detected Aircraft", use_column_width=True)
 
         class_ids = [int(x) for x in r.boxes.cls.tolist()]
-
-        detected = list(
-            set([r.names[c] for c in class_ids])
-        )
+        detected = list(set([r.names[c] for c in class_ids]))
 
         st.markdown("### Detected Aircraft")
 
         for name in detected:
-
             st.subheader(name)
-
             display_strategy(name)
 
 
     # -------------------------
-    # VIDEO DETECTION
+    # VIDEO DETECTION (YOLO STREAM)
     # -------------------------
     else:
 
-        cap = cv2.VideoCapture(file)
-
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30
-
-        width = int(
-            cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        results = model.predict(
+            source=file,
+            conf=0.25,
+            stream=True
         )
 
-        height = int(
-            cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        )
-
-        total_frames = int(
-            cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        ) or 1
-
-        temp_dir = tempfile.mkdtemp()
-
-        output = os.path.join(
-            temp_dir,
-            "output.mp4"
-        )
-
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-
-        out = cv2.VideoWriter(
-            output,
-            fourcc,
-            fps,
-            (width, height)
-        )
-
-        progress = st.progress(0)
-
-        frame_count = 0
-        frame_skip = 3
+        frame_placeholder = st.empty()
 
         class_counter = defaultdict(int)
         class_conf = defaultdict(list)
 
-        while cap.isOpened():
+        for r in results:
 
-            ret, frame = cap.read()
-
-            if not ret:
-                break
-
-            frame_count += 1
-
-            if frame_count % frame_skip != 0:
-                continue
-
-            results = model.predict(
-                frame,
-                conf=0.25,
-                verbose=False
-            )
-
-            r = results[0]
+            frame = r.plot()
+            frame_placeholder.image(frame, channels="BGR", use_column_width=True)
 
             for box in r.boxes:
 
                 cid = int(box.cls.item())
                 conf = float(box.conf.item())
-
                 name = r.names[cid]
 
                 class_counter[name] += 1
                 class_conf[name].append(conf)
 
-            annotated = r.plot()
-
-            out.write(annotated)
-
-            progress.progress(
-                min(frame_count / total_frames, 1.0)
-            )
-
-        cap.release()
-        out.release()
-
         st.success("Detection complete")
-
-        with open(output, "rb") as f:
-            st.video(f.read())
 
         if not class_counter:
             st.warning("No aircraft detected.")
             st.stop()
 
-        top = max(
-            class_counter.items(),
-            key=lambda x: x[1]
-        )
-
+        top = max(class_counter.items(), key=lambda x: x[1])
         name, count = top
-
         avg_conf = np.mean(class_conf[name])
 
         st.markdown("### Top Detected Aircraft")
-
-        st.subheader(
-            f"{name} ({count} detections | avg conf {avg_conf:.2f})"
-        )
+        st.subheader(f"{name} ({count} detections | avg conf {avg_conf:.2f})")
 
         display_strategy(name)
